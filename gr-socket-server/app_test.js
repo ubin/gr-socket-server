@@ -1,6 +1,6 @@
 var assert = require('assert')
   , http = require('http')
-  , greenroom = require('./app')
+  , app = require('./app')
   , callbackFired = false;
 
 greenroom.server.listen(80);
@@ -10,7 +10,7 @@ http
   .addCallback(function(data) {
     callbackFired = true;
     //assert.equal('hello world', data);
-    greenroom.server.close();
+    app.server.close();
 console.write('tes');
   });
 
