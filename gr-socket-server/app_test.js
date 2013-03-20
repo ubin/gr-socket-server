@@ -3,7 +3,7 @@ var assert = require('assert')
   , app = require('./app')
   , callbackFired = false;
 
-greenroom.server.listen(80);
+app.server.listen(80);
 
 http
   .cat('http://localhost')
