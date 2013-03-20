@@ -1,10 +1,10 @@
-var server = require('http').createServer(handler)
-  , io = require('socket.io').listen(server, {transports:['flashsocket', 'websocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'] })
-  , fs = require('fs')
-  , sys = require("sys")
-  , users = new Array()				//stores socket clients identified by the client ID hash
-  , operators = new Array();		//stores socket client IDs per conversation -- all users(Guest/VIP) associated with the operator. 
-									//eg operators[<op_client_id>]= [<vip_client_id>,<guest_client_id>]
+var server 		= require('http').createServer(handler)
+  , io 			= require('socket.io').listen(server, {transports:['flashsocket', 'websocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'] })
+  , fs 			= require('fs')
+  , sys 		= require("sys")
+  , users 		= new Array()				//stores socket clients identified by the client ID hash
+  , moderators	= new Array();		//stores socket client IDs per conversation -- all users(Guest/VIP) associated with the operator. 
+									//eg moderators[<op_client_id>]= [<vip_client_id>,<guest_client_id>]
 
 server.listen(80);
 
@@ -52,29 +52,34 @@ io.sockets.on('connection', function (client)
 			sys.log("Sending message from " + client.id +" - to " + data.dest_client_id );
 			switch(data.event) 
 			{
-				case('operator_assistance_request'): //case('guest_assistance_request'):
 				case('ping_response'):
 				case('notification'):
 				case('chat_message'):
 					users[data.dest_client_id].send( JSON.stringify({event: data.event, message: data.message, requester_id: client.id}) );
-					//client.send( JSON.stringify( {event: 'ping_response', requester_id: client.id}) );
 					break;
-				case('operator_instruction'):
+				case('instruction'):
 					if(data.hasOwnProperty('timeRemaining'))
-						users[data.dest_client_id].send( JSON.stringify({event: data.event, instruction: data.instruction, timeRemaining: data.timeRemaining, requester_id: client.id}) );
+						users[data.dest_client_id].send( JSON.stringify({event			: data.event, 
+																		 instruction	: data.instruction, 
+																		 timeRemaining	: data.timeRemaining, 
+																		 requester_id	: client.id}) 
+														);
 					else 
-						users[data.dest_client_id].send( JSON.stringify({event: data.event, instruction: data.instruction, requester_id: client.id}) );
+						users[data.dest_client_id].send( JSON.stringify({
+																		event			: data.event, 
+																		instruction		: data.instruction, 
+																		requester_id	: client.id}) );
 					
 					break;
-				case('ping_operator'):
+				case('ping_moderator'):
 				
-					//store the client id for operator
-					if( !operators.hasOwnProperty(data.dest_client_id) ) {
-					 	operators[data.dest_client_id] = new Array();
+					//store the client id for moderator
+					if( !moderators.hasOwnProperty(data.dest_client_id) ) {
+					 	moderators[data.dest_client_id] = new Array();
 					}
-					operators[data.dest_client_id].push(client.id);
+					moderators[data.dest_client_id].push(client.id);
 				
-					sys.log("Number of operators connected:" + operators.length);
+					sys.log("Number of moderators connected:" + moderators.length);
 					users[data.dest_client_id].send( JSON.stringify({event: data.event, message: data.message, requester_id: client.id}) );
 					break;
 				default: break;	
@@ -93,14 +98,14 @@ io.sockets.on('connection', function (client)
 		sys.log("Client disconnected!");		
 		
 		//if this is operator client, notify all associated clients that the operator has exited
-		if( operators.hasOwnProperty(client.id) ) 
+		if( moderators.hasOwnProperty(client.id) ) 
 		{
-			for( var i=0; i < operators[client.id].length; i++ ) 
+			for( var i=0; i < moderators[client.id].length; i++ ) 
 			{
-				if( users.hasOwnProperty(operators[client.id][i]) )
-					users[operators[client.id][i]].send( JSON.stringify( {event: 'operator_exit', message: '', requester_id: client.id} ) );
+				if( users.hasOwnProperty(moderators[client.id][i]) )
+					users[moderators[client.id][i]].send( JSON.stringify( {event: 'moderator_exit', message: '', requester_id: client.id} ) );
 			}
-			delete operators[client.id];
+			delete moderators[client.id];
 		}
 		
 		//remove the client from the user array
